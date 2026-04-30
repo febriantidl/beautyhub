@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('chatbot_logs', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
+            $table->text('user_message');
+            $table->string('detected_intent')->nullable();
+            $table->text('bot_response');
+            $table->json('parameters')->nullable();
             $table->timestamps();
         });
     }

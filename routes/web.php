@@ -1,20 +1,25 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Mua\AuthController;
+use App\Http\Controllers\Mua\DashboardController;
 
+// Guest (belum login)
+Route::middleware('guest')->group(function () {
+    Route::get('/mua/login', [AuthController::class, 'showLoginForm'])->name('mua.login');
+    Route::post('/mua/login', [AuthController::class, 'login']);
+});
+
+// Authenticated MUA/Admin
+Route::middleware(['auth', 'role:mua,admin'])->prefix('mua')->name('mua.')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+});
+
+// Redirect root ke login MUA
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('mua.login');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
-
-require __DIR__.'/auth.php';
+Route::post('/mua/bookings/{id}/approve', [App\Http\Controllers\Mua\BookingController::class, 'approve'])->name('mua.bookings.approve');
+Route::post('/mua/bookings/{id}/reject', [App\Http\Controllers\Mua\BookingController::class, 'reject'])->name('mua.bookings.reject');

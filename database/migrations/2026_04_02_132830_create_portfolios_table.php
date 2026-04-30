@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::create('portfolios', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('mua_id')->constrained()->onDelete('cascade');
+            $table->string('image_path');
+            $table->string('title')->nullable();
+            $table->text('caption')->nullable();
+            $table->json('feature_vector')->nullable();
+            $table->enum('style_category', ['wedding', 'graduation', 'party', 'photoshoot', 'formal', 'natural', 'glam', 'other'])->nullable();
             $table->timestamps();
         });
     }

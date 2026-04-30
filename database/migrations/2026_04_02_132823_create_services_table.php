@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::create('services', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('mua_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->decimal('price', 12, 0);
+            $table->enum('category', ['wedding', 'graduation', 'party', 'photoshoot', 'formal', 'other']);
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
     }
