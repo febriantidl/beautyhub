@@ -10,16 +10,11 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Matikan foreign key check sementara agar bisa truncate
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
-        DB::table('chatbot_logs')->truncate();
-        DB::table('reviews')->truncate();
-        DB::table('bookings')->truncate();
-        DB::table('portfolios')->truncate();
-        DB::table('services')->truncate();
-        DB::table('muas')->truncate();
-        DB::table('users')->truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        // Truncate semua tabel (SQLite & MySQL compatible)
+        $tables = ['chatbot_logs','reviews','bookings','portfolios','services','muas','users'];
+        foreach ($tables as $t) {
+            DB::table($t)->delete();
+        }
 
         // ── ADMIN ──────────────────────────────────────────────────
         DB::table('users')->insert([
