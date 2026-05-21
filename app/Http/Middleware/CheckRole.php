@@ -4,28 +4,45 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
     /**
-     * Handle an incoming request.
-     *
-     * @param  Closure(Request): (Response)  $next
+     * Periksa apakah user yang login memiliki salah satu role yang diizinkan.
+     * Usage: ->middleware('role:mua,admin')
      */
-    public function handle(Request $request, Closure $next, ...$roles): Response
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        // 1. Cek apakah user sudah login atau belum
-        if (!$request->user()) {
+        if (!Auth::check()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
             return redirect()->route('mua.login');
         }
 
-        // 2. Cek apakah role user saat ini ada di dalam daftar yang diizinkan
-        if (in_array($request->user()->role, $roles)) {
-            return $next($request);
+        $user = Auth::user();
+
+        if (!in_array($user->role, $roles)) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Forbidden. Insufficient role.'], 403);
+            }
+            Auth::logout();
+            return redirect()->route('mua.login')
+                ->withErrors(['email' => 'Anda tidak memiliki akses ke halaman ini.']);
         }
 
-        // 3. Kalau rolenya ga sesuai (misal customer nyasar), lempar error 403 unauthorized
-        abort(403, 'Anda tidak memiliki hak akses ke halaman ini.');
+        // Cek apakah akun aktif
+        if (!$user->is_active) {
+            Auth::logout();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Akun Anda dinonaktifkan.'], 403);
+            }
+            return redirect()->route('mua.login')
+                ->withErrors(['email' => 'Akun Anda telah dinonaktifkan.']);
+        }
+
+        return $next($request);
     }
 }

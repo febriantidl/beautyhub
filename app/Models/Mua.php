@@ -4,13 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Mua extends Model
 {
-    // Menentukan nama tabel (opsional, tapi bagus buat mastiin Laravel ga salah baca jadi muas)
     protected $table = 'muas';
 
-    // Daftar kolom yang wajib masuk fillable biar bisa di-create otomatis
     protected $fillable = [
         'user_id',
         'location',
@@ -23,16 +22,48 @@ class Mua extends Model
         'is_verified',
     ];
 
-    // Karena di tabel kamu ada kolom bertipe JSON, kita cast biar otomatis jadi array di PHP
     protected $casts = [
-        'style_tags' => 'array',
-        'is_verified' => 'boolean',
-        'rating' => 'float',
+        'style_tags'       => 'array',
+        'is_verified'      => 'boolean',
+        'rating'           => 'float',
+        'experience_years' => 'integer',
+        'total_reviews'    => 'integer',
     ];
 
-    // Relasi balik ke model User
+    // ─── Relasi ───────────────────────────────────────────────────────
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function services(): HasMany
+    {
+        return $this->hasMany(Service::class);
+    }
+
+    public function portfolios(): HasMany
+    {
+        return $this->hasMany(Portfolio::class);
+    }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    // ─── Computed Helpers ────────────────────────────────────────────
+    public function recalculateRating(): void
+    {
+        $avg = $this->reviews()->avg('rating') ?? 0;
+        $count = $this->reviews()->count();
+        $this->update([
+            'rating'        => round($avg, 2),
+            'total_reviews' => $count,
+        ]);
     }
 }

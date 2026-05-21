@@ -4,39 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Mua extends Model
+class Portfolio extends Model
 {
-    protected $table = 'muas';
-
     protected $fillable = [
-        'user_id',
-        'location',
-        'bio',
-        'experience_years',
-        'rating',
-        'total_reviews',
-        'style_tags',
-        'certificate',
-        'is_verified',
+        'mua_id',
+        'image_path',
+        'title',
+        'caption',
+        'feature_vector',
+        'style_category',
     ];
 
     protected $casts = [
-        'style_tags' => 'array',
-        'is_verified' => 'boolean',
-        'rating' => 'float',
+        'feature_vector' => 'array',
     ];
 
-    // Relasi balik ke model User
-    public function user(): BelongsTo
+    public function mua(): BelongsTo
     {
-        return $this->belongsTo(User::class);
-    }
-
-    // Hubungkan ke model Portfolio (Ini yang tadi bikin error)
-    public function portfolios(): HasMany
-    {
-        return $this->hasMany(Portfolio::class);
+        return $this->belongsTo(Mua::class);
     }
 }
