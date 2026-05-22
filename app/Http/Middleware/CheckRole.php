@@ -9,10 +9,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
-    /**
-     * Periksa apakah user yang login memiliki salah satu role yang diizinkan.
-     * Usage: ->middleware('role:mua,admin')
-     */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         if (!Auth::check()) {
@@ -26,18 +22,20 @@ class CheckRole
 
         if (!in_array($user->role, $roles)) {
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Forbidden. Insufficient role.'], 403);
+                return response()->json(['message' => 'Forbidden.'], 403);
             }
+            // Redirect ke dashboard yang sesuai rolenya
+            if ($user->isAdmin()) return redirect()->route('admin.dashboard');
+            if ($user->isMua())   return redirect()->route('mua.dashboard');
             Auth::logout();
             return redirect()->route('mua.login')
-                ->withErrors(['email' => 'Anda tidak memiliki akses ke halaman ini.']);
+                ->withErrors(['email' => 'Akses ditolak.']);
         }
 
-        // Cek apakah akun aktif
         if (!$user->is_active) {
             Auth::logout();
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Akun Anda dinonaktifkan.'], 403);
+                return response()->json(['message' => 'Akun dinonaktifkan.'], 403);
             }
             return redirect()->route('mua.login')
                 ->withErrors(['email' => 'Akun Anda telah dinonaktifkan.']);
