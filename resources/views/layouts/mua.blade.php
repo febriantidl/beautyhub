@@ -7,34 +7,57 @@
     <title>BeautyHub MUA — @yield('title', 'Dashboard')</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+
+:root {
+    --maroon: #800000;
+    --gold: #D4AF37;
+    --bg: #FDFBF7;
+}
+
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'DM Sans', sans-serif; background: #FAF8F6; color: #2C2423; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); }
+
+.btn-primary { background-color: var(--maroon) !important; color: #fff !important; }
+.stat-icon { background: #F3EFEF !important; color: var(--maroon) !important; }
+.stat-value { color: var(--maroon) !important; }
+.booking-avatar { background: var(--gold) !important; }
+.badge { border: 1px solid currentColor; }
 
         /* ── Sidebar ─────────────────── */
-        .sidebar { position: fixed; left: 0; top: 0; width: 268px; height: 100vh; background: white; border-right: 1px solid #EDE8E3; padding: 1.75rem 1.25rem 1.25rem; display: flex; flex-direction: column; z-index: 100; overflow-y: auto; }
-        .logo { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #9B6B6B; margin-bottom: 2rem; padding-left: 0.5rem; letter-spacing: -0.02em; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 268px; height: 100vh; background: #4f0404; border-right: 1px solid #EDE8E3; padding: 1.75rem 1.25rem 1.25rem; display: flex; flex-direction: column; z-index: 100; overflow-y: auto; }
+        .logo { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #ffffff; margin-bottom: 2rem; padding-left: 0.5rem; letter-spacing: -0.02em; }
         .logo-accent { color: #C9A56E; }
+        /* Pastikan ini ada di bagian bawah CSS lo, biar dia menang aturan */
+.sidebar .nav-link.active {
+    background: #ffffff !important; /* Ganti warnanya jadi Gold atau Maroon sesuka lo */
+    color: #4f0404 !important;
+    font-weight: 700 !important;
+}
 
-        .nav-section-label { font-size: 0.67rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #B8ACA7; padding: 0 0.5rem; margin: 1.25rem 0 0.4rem; }
+/* Biar ikonnya ikut ganti warna putih pas aktif */
+.sidebar .nav-link.active svg {
+    stroke: #4f0404 !important;
+}
+        .nav-section-label { font-size: 0.67rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #e7e7e7; padding: 0 0.5rem; margin: 1.25rem 0 0.4rem; }
         .nav-menu { list-style: none; }
         .nav-item { margin-bottom: 0.2rem; }
-        .nav-link { display: flex; align-items: center; gap: 0.7rem; padding: 0.65rem 0.875rem; color: #7A6F6E; text-decoration: none; border-radius: 11px; transition: all 0.18s; font-weight: 500; font-size: 0.875rem; position: relative; }
-        .nav-link:hover { background: rgba(212,165,165,0.07); color: #8B5A5A; }
-        .nav-link.active { background: linear-gradient(135deg, #D4A5A5 0%, #9B6B6B 100%); color: white; box-shadow: 0 4px 14px rgba(155,107,107,0.28); }
+        .nav-link { display: flex; align-items: center; gap: 0.7rem; padding: 0.65rem 0.875rem; color: #ffffff; text-decoration: none; border-radius: 11px; transition: all 0.18s; font-weight: 500; font-size: 0.875rem; position: relative; }
+        .nav-link:hover { background: #9f4d4d; color: #ffffff; }
+        
         .nav-icon { font-size: 0.95rem; width: 18px; text-align: center; flex-shrink: 0; }
         .nav-badge { margin-left: auto; background: #D4A5A5; color: white; border-radius: 9999px; padding: 0.1rem 0.45rem; font-size: 0.68rem; font-weight: 700; }
-        .nav-link.active .nav-badge { background: rgba(255,255,255,0.3); }
+        .nav-badge { background: rgba(255,255,255,0.3); }
 
         .divider { height: 1px; background: #EDE8E3; margin: 1rem 0.5rem; }
 
-        .user-profile { padding: 0.875rem; background: #FAF8F6; border-radius: 14px; display: flex; align-items: center; gap: 0.7rem; border: 1px solid #EDE8E3; margin-top: auto; }
+        .user-profile { padding: 0.875rem; background: #ffffff; border-radius: 14px; display: flex; align-items: center; gap: 0.7rem; border: 1px solid #EDE8E3; margin-top: auto; }
         .user-avatar { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #D4A5A5, #C9A56E); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 16px; flex-shrink: 0; overflow: hidden; }
         .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .user-name { font-weight: 700; font-size: 0.825rem; color: #2C2423; }
         .user-role { font-size: 0.72rem; color: #9B8F8E; }
 
         /* ── Main ────────────────────── */
-        .main-content { margin-left: 268px; padding: 2rem 2.25rem; min-height: 100vh; }
+        .main-content { margin-left: 268px; padding: 2rem 2.25rem; min-height: 100vh; background: white;}
 
         /* ── Stats ───────────────────── */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.2rem; margin-bottom: 2rem; }
@@ -99,31 +122,34 @@
         <p class="nav-section-label">Menu Utama</p>
         <ul class="nav-menu">
             <li class="nav-item">
-                <a href="{{ route('mua.dashboard') }}" class="nav-link {{ request()->routeIs('mua.dashboard') ? 'active' : '' }}">
-                    <span class="nav-icon">📊</span> Dashboard
-                </a>
+                <a href="{{ route('mua.dashboard') }}" class="nav-link ...">
+    <svg style="width:18px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+    Dashboard
+</a>
             </li>
             <li class="nav-item">
-                <a href="{{ route('mua.bookings.index') }}" class="nav-link {{ request()->routeIs('mua.bookings.*') ? 'active' : '' }}">
-                    <span class="nav-icon">📋</span> Kelola Booking
-                    @php $pb = Auth::user()->mua?->bookings()->where('status','pending')->count() ?? 0; @endphp
-                    @if($pb > 0)<span class="nav-badge">{{ $pb }}</span>@endif
-                </a>
+                <a href="{{ route('mua.bookings.index') }}" class="nav-link ...">
+    <svg style="width:18px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M19 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2z"></path><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+    Kelola Booking
+</a>
             </li>
             <li class="nav-item">
-                <a href="{{ route('mua.portfolio.index') }}" class="nav-link {{ request()->routeIs('mua.portfolio.*') ? 'active' : '' }}">
-                    <span class="nav-icon">🖼️</span> Portfolio
-                </a>
+                <a href="{{ route('mua.portfolio.index') }}" class="nav-link ...">
+    <svg style="width:18px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>
+    Portfolio
+</a>
             </li>
             <li class="nav-item">
-                <a href="{{ route('mua.services.index') }}" class="nav-link {{ request()->routeIs('mua.services.*') ? 'active' : '' }}">
-                    <span class="nav-icon">💄</span> Kelola Layanan
-                </a>
+                <a href="{{ route('mua.services.index') }}" class="nav-link ...">
+    <svg style="width:18px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+    Kelola Layanan
+</a>
             </li>
             <li class="nav-item">
-                <a href="{{ route('mua.verification') }}" class="nav-link {{ request()->routeIs('mua.verification*') ? 'active' : '' }}">
-                    <span class="nav-icon">📱</span> Verifikasi QR
-                </a>
+                <a href="{{ route('mua.verification') }}" class="nav-link ...">
+    <svg style="width:18px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+    Verifikasi QR
+</a>
             </li>
         </ul>
 
@@ -135,6 +161,7 @@
                 <a href="{{ route('mua.profile') }}" class="nav-link {{ request()->routeIs('mua.profile*') ? 'active' : '' }}">
                     <span class="nav-icon">👤</span> Profil Saya
                 </a>
+                
             </li>
             <li class="nav-item">
                 <form method="POST" action="{{ route('mua.logout') }}" id="sf-logout">@csrf</form>

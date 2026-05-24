@@ -7,20 +7,27 @@ use App\Http\Controllers\Api\BookingApiController;
 use App\Http\Controllers\Api\ReviewApiController;
 use App\Http\Controllers\Api\ChatbotApiController;
 use App\Http\Controllers\Api\SearchApiController;
+use App\Http\Controllers\Api\MobileIntegrationController;
+use App\Http\Controllers\Mua\BookingController as MuaBookingController;
+use App\Http\Controllers\Mua\ServiceController;
 
 /*
 |--------------------------------------------------------------------------
 | BeautyHub API Routes
 |--------------------------------------------------------------------------
-| Semua route di sini ter-prefix /api secara otomatis.
 */
 
-// ── Public routes (tidak perlu token) ────────────────────────────
+// ── Public routes ──────────────────────────────────────────────────
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login',    [AuthController::class, 'login']);
 
-// ── Protected routes (butuh JWT Bearer Token) ─────────────────────
-Route::middleware('auth:api')->group(function () {
+// Mobile Integration (Public/Integrasi)
+Route::get('/mobile/mua', [MobileIntegrationController::class, 'getMua']);
+Route::post('/mobile/booking', [MuaBookingController::class, 'storeFromMobile']);
+Route::get('/mua/{mua_id}/services', [ServiceController::class, 'apiIndex']);
+
+// ── Protected routes (Gunakan sanctum untuk Sanctum Token) ──────────
+Route::middleware('auth:sanctum')->group(function () {
 
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -28,25 +35,21 @@ Route::middleware('auth:api')->group(function () {
 
     // MUA - Discovery
     Route::prefix('muas')->group(function () {
-        Route::get('/',                  [MuaApiController::class, 'index']);
-        Route::get('/{id}',              [MuaApiController::class, 'show']);
-        Route::get('/{id}/portfolio',    [MuaApiController::class, 'portfolio']);
-        Route::get('/{id}/reviews',      [MuaApiController::class, 'reviews']);
+        Route::get('/',              [MuaApiController::class, 'index']);
+        Route::get('/{id}',          [MuaApiController::class, 'show']);
+        Route::get('/{id}/portfolio', [MuaApiController::class, 'portfolio']);
+        Route::get('/{id}/reviews',  [MuaApiController::class, 'reviews']);
     });
 
     // Bookings
     Route::prefix('bookings')->group(function () {
-        Route::post('/',          [BookingApiController::class, 'store']);
-        Route::get('/my',         [BookingApiController::class, 'myBookings']);
-        Route::put('/{id}/cancel',[BookingApiController::class, 'cancel']);
+        Route::post('/',           [BookingApiController::class, 'store']);
+        Route::get('/my',          [BookingApiController::class, 'myBookings']);
+        Route::put('/{id}/cancel', [BookingApiController::class, 'cancel']);
     });
 
-    // Reviews
-    Route::post('/reviews', [ReviewApiController::class, 'store']);
-
-    // Chatbot
-    Route::post('/chatbot/message', [ChatbotApiController::class, 'message']);
-
-    // Image Search
-    Route::post('/search/by-image', [SearchApiController::class, 'searchByImage']);
+    // Reviews, Chat, Search
+    Route::post('/reviews',           [ReviewApiController::class, 'store']);
+    Route::post('/chatbot/message',   [ChatbotApiController::class, 'message']);
+    Route::post('/search/by-image',   [SearchApiController::class, 'searchByImage']);
 });
