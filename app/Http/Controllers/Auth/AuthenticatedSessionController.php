@@ -27,7 +27,13 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
-
+        if ($request->boolean('remember')) {
+    cookie()->queue(
+        'remembered_email',
+        $request->email,
+        43200 // 30 hari
+    );
+}
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
