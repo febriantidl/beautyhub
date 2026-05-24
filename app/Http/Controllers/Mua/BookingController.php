@@ -4,167 +4,103 @@ namespace App\Http\Controllers\Mua;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class BookingController extends Controller
 {
-    public function index(Request $request)
+    // FIX ERROR: Call to undefined method index()
+    public function index()
+{
+    $muaId = Auth::user()->mua->id;
+    // Ganti ->get() jadi ->paginate(10) biar ada method total()
+    $bookings = Booking::where('mua_id', $muaId)->orderBy('created_at', 'desc')->paginate(10);
+    
+    return view('mua.bookings.index', compact('bookings'));
+}
+
+    public function show($id)
     {
-        $mua = Auth::user()->mua;
-        if (!$mua) return redirect()->route('mua.dashboard');
-
-        $query = Booking::with(['customer', 'service'])
-            ->where('mua_id', $mua->id);
-
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
-        }
-        if ($request->filled('search')) {
-            $query->whereHas('customer', fn($q) =>
-                $q->where('name','like','%'.$request->search.'%')
-            );
-        }
-
-        $bookings = $query->orderByDesc('created_at')->paginate(15);
-
-        $counts = Booking::where('mua_id', $mua->id)
-            ->selectRaw("
-                COUNT(*) as total,
-                SUM(status='pending')   as pending,
-                SUM(status='approved')  as approved,
-                SUM(status='completed') as completed,
-                SUM(status='rejected')  as rejected
-            ")->first();
-
-        return view('mua.bookings.index', compact('bookings','counts'));
-    }
-
-    public function show(int $id)
-    {
-        $mua     = Auth::user()->mua;
-        $booking = Booking::with(['customer','service','review'])
-            ->where('mua_id', $mua->id)->findOrFail($id);
-
+        $booking = Booking::findOrFail($id);
         return view('mua.bookings.show', compact('booking'));
     }
 
-    public function approve(Request $request, int $id)
+    public function approve($id)
     {
-        $mua     = Auth::user()->mua;
-        $booking = Booking::where('mua_id', $mua->id)
-            ->where('status', Booking::STATUS_PENDING)->findOrFail($id);
-
-        // Generate verification code
-        $code = strtoupper(Str::random(8));
-        while (Booking::where('verification_code', $code)->exists()) {
-            $code = strtoupper(Str::random(8));
-        }
-
-        // Generate QR code jika library tersedia
-        $qrPath = null;
-        try {
-            if (class_exists(\Chillerlan\QRCode\QRCode::class)) {
-                $qrDir = storage_path('app/public/qrcodes');
-                if (!file_exists($qrDir)) mkdir($qrDir, 0775, true);
-
-                $qrOptions = new \Chillerlan\QRCode\QROptions([
-                    'outputType' => \Chillerlan\QRCode\Output\QROutputInterface::OUTPUT_IMAGE_PNG,
-                    'scale'      => 8,
-                    'imageBase64'=> false,
-                ]);
-
-                $qrContent = json_encode([
-                    'code'       => $code,
-                    'booking_id' => $booking->id,
-                    'mua'        => $mua->user->name,
-                    'event_date' => $booking->event_date->toDateString(),
-                ]);
-
-                $filename = 'qrcodes/qr_' . $booking->id . '_' . time() . '.png';
-                (new \Chillerlan\QRCode\QRCode($qrOptions))->render($qrContent, storage_path('app/public/'.$filename));
-                $qrPath = $filename;
-            }
-        } catch (\Throwable $e) {
-            // QR opsional — lanjut tanpa QR jika gagal
-        }
-
-        $booking->update([
-            'status'            => Booking::STATUS_APPROVED,
-            'verification_code' => $code,
-            'qr_code_path'      => $qrPath,
-        ]);
-
-        return redirect()->back()
-            ->with('success', "Booking #{$booking->id} disetujui. Kode verifikasi: {$code}");
+        Booking::where('id', $id)->update(['status' => 'approved']);
+        return back()->with('success', 'Booking disetujui!');
     }
 
-    public function reject(Request $request, int $id)
+    public function reject($id)
     {
-        $request->validate([
-            'rejection_reason' => 'nullable|string|max:300',
-        ]);
-
-        $mua     = Auth::user()->mua;
-        $booking = Booking::where('mua_id', $mua->id)
-            ->whereIn('status', [Booking::STATUS_PENDING, Booking::STATUS_APPROVED])
-            ->findOrFail($id);
-
-        $booking->update([
-            'status'           => Booking::STATUS_REJECTED,
-            'rejection_reason' => $request->rejection_reason ?? 'Tidak tersedia.',
-        ]);
-
-        return redirect()->back()->with('success', "Booking #{$booking->id} ditolak.");
+        Booking::where('id', $id)->update(['status' => 'rejected']);
+        return back()->with('success', 'Booking ditolak!');
     }
 
-    public function complete(int $id)
+    public function complete($id)
     {
-        $mua     = Auth::user()->mua;
-        $booking = Booking::where('mua_id', $mua->id)
-            ->where('status', Booking::STATUS_VERIFIED)->findOrFail($id);
-
-        $booking->update(['status' => Booking::STATUS_COMPLETED]);
-        return redirect()->back()->with('success', "Booking #{$booking->id} ditandai selesai.");
+        Booking::where('id', $id)->update(['status' => 'completed']);
+        return back()->with('success', 'Booking selesai!');
     }
 
-    public function verifyQr(Request $request)
+    public function verifyQrProcess(Request $request)
+{
+    $bookingId = $request->code; // Ini ID dari hasil scan QR
+    $booking = Booking::find($bookingId);
+
+    if ($booking && $booking->mua_id == Auth::user()->mua->id) {
+        $booking->update(['status' => 'completed']);
+        return response()->json(['success' => true, 'message' => 'Booking selesai!']);
+    }
+
+    return response()->json(['success' => false, 'message' => 'QR tidak valid!']);
+}
+
+public function checkAvailability(Request $request)
+{
+    $muaId = $request->mua_id;
+    $date  = $request->event_date;
+
+    // Anggap MUA cuma bisa handle 1-2 job per hari (atur sesuai keinginan lo)
+    $maxCapacity = 3; 
+    $bookedCount = Booking::where('mua_id', $muaId)
+                          ->where('event_date', $date)
+                          ->whereIn('status', ['pending', 'confirmed'])
+                          ->count();
+
+    return response()->json([
+        'available' => $bookedCount < $maxCapacity,
+        'message'   => $bookedCount < $maxCapacity ? 'Jadwal tersedia!' : 'Maaf, MUA penuh di tanggal ini.'
+    ]);
+}
+
+    public function storeFromMobile(Request $request)
     {
-        $request->validate(['verification_code' => 'required|string|min:6|max:10']);
+        $validated = $request->validate([
+            'mua_id'         => 'required|exists:muas,id',
+            'customer_email' => 'required|email',
+            'event_date'     => 'required|date',
+            'service_id'     => 'required|exists:services,id',
+            'location'       => 'required|string',
+        ]);
 
-        $mua  = Auth::user()->mua;
-        $code = strtoupper(trim($request->verification_code));
-
-        $booking = Booking::with('customer','service')
-            ->where('mua_id', $mua->id)
-            ->where('verification_code', $code)
-            ->where('status', Booking::STATUS_APPROVED)
-            ->first();
-
-        if (!$booking) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Kode tidak valid atau booking sudah diverifikasi.',
-            ], 404);
-        }
-
-        $booking->update(['status' => Booking::STATUS_VERIFIED, 'verified_at' => now()]);
+        $user = User::where('email', $request->customer_email)->first();
+        
+        $booking = Booking::create([
+            'mua_id'     => $request->mua_id,
+            'user_id'    => $user ? $user->id : null,
+            'service_id' => $request->service_id,
+            'event_date' => $request->event_date,
+            'location'   => $request->location,
+            'status'     => 'pending', 
+            'price'      => $request->price ?? 0,
+        ]);
 
         return response()->json([
-            'success' => true,
-            'message' => '✅ Verifikasi berhasil!',
-            'data'    => [
-                'booking_id'  => $booking->id,
-                'customer'    => $booking->customer->name,
-                'service'     => $booking->service?->name ?? 'Custom',
-                'event_date'  => $booking->event_date->format('d M Y'),
-                'time_slot'   => $booking->time_slot ?? '-',
-                'location'    => $booking->location_address,
-                'price'       => 'Rp '.number_format($booking->price,0,',','.'),
-                'verified_at' => now()->format('d M Y, H:i'),
-            ],
-        ]);
+            'success' => true, 
+            'message' => 'Booking berhasil dibuat!',
+            'booking_id' => $booking->id
+        ], 201);
     }
 }
