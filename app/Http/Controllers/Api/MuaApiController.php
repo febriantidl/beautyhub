@@ -10,41 +10,34 @@ class MuaApiController extends Controller
 {
     /**
      * GET /api/muas
-     * List semua MUA dengan filter & sort.
      */
     public function index(Request $request)
     {
         $query = Mua::with('user', 'services')
             ->whereHas('user', fn($q) => $q->where('is_active', true));
 
-        // Filter: lokasi
         if ($request->filled('location')) {
             $query->where('location', 'like', '%' . $request->location . '%');
         }
 
-        // Filter: style_tags
         if ($request->filled('style')) {
             $query->whereJsonContains('style_tags', $request->style);
         }
 
-        // Filter: rating minimum
         if ($request->filled('min_rating')) {
             $query->where('rating', '>=', (float) $request->min_rating);
         }
 
-        // Filter: verified only
         if ($request->boolean('verified_only')) {
             $query->where('is_verified', true);
         }
 
-        // Filter: harga layanan
         if ($request->filled('max_price')) {
             $query->whereHas('services', fn($q) =>
                 $q->where('price', '<=', $request->max_price)->where('is_active', true)
             );
         }
 
-        // Sort
         $sortField = match($request->get('sort', 'rating')) {
             'rating'     => 'rating',
             'experience' => 'experience_years',
@@ -53,7 +46,6 @@ class MuaApiController extends Controller
         };
         $query->orderByDesc($sortField);
 
-        // Paginate
         $perPage = min((int) $request->get('per_page', 10), 50);
         $muas = $query->paginate($perPage);
 
@@ -71,7 +63,6 @@ class MuaApiController extends Controller
 
     /**
      * GET /api/muas/{id}
-     * Detail satu MUA.
      */
     public function show(int $id)
     {
@@ -147,7 +138,6 @@ class MuaApiController extends Controller
         ]);
     }
 
-    // ─── Private Helper ──────────────────────────────────────────────
     private function formatMua(Mua $mua, bool $detail = false): array
     {
         $data = [
