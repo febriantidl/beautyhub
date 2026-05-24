@@ -10,75 +10,58 @@ use Illuminate\Support\Facades\Storage;
 
 class PortfolioController extends Controller
 {
+    // --- WEB MANAGEMENT ---
     public function index()
     {
-        $mua        = Auth::user()->mua;
+        $mua = Auth::user()->mua;
         $portfolios = $mua ? $mua->portfolios()->orderByDesc('created_at')->paginate(12) : collect();
-
         return view('mua.portfolio.index', compact('portfolios', 'mua'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'images'           => 'required|array|min:1|max:10',
-            'images.*'         => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
-            'titles'           => 'nullable|array',
-            'titles.*'         => 'nullable|string|max:100',
-            'captions'         => 'nullable|array',
-            'captions.*'       => 'nullable|string|max:300',
-            'style_categories' => 'nullable|array',
-            'style_categories.*' => 'nullable|in:wedding,graduation,party,photoshoot,formal,natural,glam,other',
+            'images' => 'required|array|min:1',
+            'images.*' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
 
-        $mua     = Auth::user()->mua;
-        $created = 0;
-
-        foreach ($request->file('images') as $idx => $image) {
+        $mua = Auth::user()->mua;
+        foreach ($request->file('images') as $image) {
             $path = $image->store('portfolios/' . $mua->id, 'public');
-
             Portfolio::create([
-                'mua_id'         => $mua->id,
-                'image_path'     => $path,
-                'title'          => $request->titles[$idx] ?? null,
-                'caption'        => $request->captions[$idx] ?? null,
-                'style_category' => $request->style_categories[$idx] ?? null,
+                'mua_id' => $mua->id,
+                'image_path' => $path,
+                'title' => $request->title ?? 'Portfolio',
             ]);
-            $created++;
         }
-
-        return redirect()->route('mua.portfolio.index')
-            ->with('success', "{$created} foto portfolio berhasil diunggah.");
+        return redirect()->back()->with('success', 'Portfolio berhasil diunggah.');
     }
 
-    public function update(Request $request, int $id)
+    // --- API UNTUK FLUTTER (BIAR GAK NGACO) ---
+    public function apiIndex(int $mua_id)
     {
-        $request->validate([
-            'title'          => 'nullable|string|max:100',
-            'caption'        => 'nullable|string|max:300',
-            'style_category' => 'nullable|in:wedding,graduation,party,photoshoot,formal,natural,glam,other',
+        $portfolios = Portfolio::where('mua_id', $mua_id)->latest()->get();
+        
+        return response()->json([
+            'success' => true,
+            'data' => $portfolios->map(function ($p) {
+                return [
+                    'id' => (int) $p->id,
+                    'imageUrl' => asset('storage/' . $p->image_path), // Pastikan ini yg dibaca Flutter
+                    'title' => $p->title ?? '',
+                    'caption' => $p->caption ?? '',
+                    'styleCategory' => $p->style_category ?? 'other'
+                ];
+            })
         ]);
-
-        $mua       = Auth::user()->mua;
-        $portfolio = Portfolio::where('mua_id', $mua->id)->findOrFail($id);
-
-        $portfolio->update([
-            'title'          => $request->title,
-            'caption'        => $request->caption,
-            'style_category' => $request->style_category,
-        ]);
-
-        return response()->json(['success' => true, 'message' => 'Portfolio diperbarui.']);
     }
 
     public function destroy(int $id)
     {
-        $mua       = Auth::user()->mua;
+        $mua = Auth::user()->mua;
         $portfolio = Portfolio::where('mua_id', $mua->id)->findOrFail($id);
-
         Storage::disk('public')->delete($portfolio->image_path);
         $portfolio->delete();
-
-        return redirect()->back()->with('success', 'Foto portfolio dihapus.');
+        return redirect()->back()->with('success', 'Foto dihapus.');
     }
 }
