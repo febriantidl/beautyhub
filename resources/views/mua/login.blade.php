@@ -85,7 +85,6 @@
             box-shadow: 0 4px 14px rgba(155,107,107,0.3);
         }
         .btn-login:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(155,107,107,0.4); }
-        .btn-login:active { transform: translateY(0); }
         .error-box {
             background: rgba(183,110,110,0.07);
             border: 1px solid rgba(183,110,110,0.3);
@@ -95,6 +94,17 @@
             font-size: 0.85rem;
             margin-bottom: 1.1rem;
         }
+        .register-link {
+            text-align: center;
+            margin-top: 1.2rem;
+            font-size: 0.85rem;
+        }
+        .register-link a {
+            color: #9B6B6B;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .register-link a:hover { text-decoration: underline; }
         .hint {
             text-align: center;
             margin-top: 1.5rem;
@@ -122,16 +132,11 @@
             @csrf
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email"
-                       value="{{ old('email') }}"
-                       placeholder="mua@example.com"
-                       required autofocus autocomplete="email">
+                <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="mua@example.com" required autofocus>
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password"
-                       placeholder="••••••••"
-                       required autocomplete="current-password">
+                <input type="password" id="password" name="password" placeholder="••••••••" required>
             </div>
             <div class="remember-row">
                 <input type="checkbox" id="remember" name="remember">
@@ -139,6 +144,11 @@
             </div>
             <button type="submit" class="btn-login">Masuk →</button>
         </form>
+
+        <div class="register-link">
+            Belum punya akun MUA? 
+            <a href="{{ route('register') }}">Daftar Sekarang</a>
+        </div>
 
         <p class="hint">Hanya untuk MUA & Admin BeautyHub</p>
     </div>
