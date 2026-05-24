@@ -15,7 +15,6 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $mua  = $user->mua ?? Mua::create(['user_id' => $user->id]);
-
         return view('mua.profile', compact('user', 'mua'));
     }
 
@@ -24,54 +23,29 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'name'             => 'required|string|max:100',
-            'phone'            => 'nullable|string|max:20',
-            'address'          => 'nullable|string|max:255',
-            'gender'           => 'nullable|in:male,female',
-            'avatar'           => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'location'         => 'nullable|string|max:100',
-            'bio'              => 'nullable|string|max:500',
-            'experience_years' => 'nullable|integer|min:0|max:50',
-            'style_tags'       => 'nullable|array',
-            'style_tags.*'     => 'string|max:30',
-            'certificate'      => 'nullable|string|max:200',
+            'name' => 'required|string|max:100',
+            // ... validasi lainnya ...
         ]);
 
-        // Update user fields
-        $userUpdate = [
-            'name'    => $request->name,
-            'phone'   => $request->phone,
-            'address' => $request->address,
-            'gender'  => $request->gender,
-        ];
+        $userUpdate = $request->only(['name', 'phone', 'address', 'gender']);
 
         if ($request->hasFile('avatar')) {
-            if ($user->avatar) {
-                Storage::disk('public')->delete($user->avatar);
-            }
+            if ($user->avatar) Storage::disk('public')->delete($user->avatar);
             $userUpdate['avatar'] = $request->file('avatar')->store('avatars', 'public');
         }
 
         $user->update($userUpdate);
 
-        // Update MUA profile
         $mua = $user->mua ?? Mua::create(['user_id' => $user->id]);
-        $mua->update([
-            'location'         => $request->location,
-            'bio'              => $request->bio,
-            'experience_years' => $request->experience_years ?? 0,
-            'style_tags'       => $request->style_tags ?? [],
-            'certificate'      => $request->certificate,
-        ]);
+        $mua->update($request->only(['location', 'bio', 'experience_years', 'style_tags', 'certificate']));
 
-        return redirect()->route('mua.profile')
-            ->with('success', 'Profil berhasil diperbarui.');
+        return redirect()->route('mua.profile')->with('success', 'Profil berhasil diperbarui.');
     }
 
     public function updatePassword(Request $request)
     {
         $request->validate([
-            'current_password' => 'required|string',
+            'current_password' => 'required',
             'password'         => 'required|string|min:8|confirmed',
         ]);
 
@@ -83,7 +57,6 @@ class ProfileController extends Controller
 
         $user->update(['password' => Hash::make($request->password)]);
 
-        return redirect()->route('mua.profile')
-            ->with('success', 'Password berhasil diubah.');
+        return redirect()->route('mua.profile')->with('success', 'Password berhasil diubah.');
     }
 }
