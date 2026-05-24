@@ -7,65 +7,65 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Tymon\JWTAuth\Facades\JWTAuth;
-use Tymon\JWTAuth\Exceptions\JWTException;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
     /**
      * POST /api/register
-     * Daftarkan customer baru.
      */
     public function register(Request $request)
     {
+        // 1. Validasi Fleksibel
         $validator = Validator::make($request->all(), [
             'name'     => 'required|string|max:100',
             'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'phone'    => 'nullable|string|max:20',
-            'gender'   => 'nullable|in:male,female',
-            'address'  => 'nullable|string|max:255',
+            'mua_name' => 'nullable|string', // Cuma diisi kalau dia daftar sebagai MUA
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validasi gagal.',
-                'errors'  => $validator->errors(),
-            ], 422);
+            // Kalau request-nya dari API (Mobile), kirim JSON
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+            }
+            // Kalau dari Web, redirect back
+            return back()->withErrors($validator)->withInput();
         }
 
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-            'role'     => 'customer',
-            'phone'    => $request->phone,
-            'gender'   => $request->gender,
-            'address'  => $request->address,
-            'is_active'=> true,
-        ]);
+        $user = \DB::transaction(function () use ($request) {
+            $user = User::create([
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
+                'role'     => $request->has('mua_name') ? 'mua' : 'customer',
+            ]);
 
-        try {
-            $token = JWTAuth::fromUser($user);
-        } catch (JWTException $e) {
+            // Kalau ada mua_name, otomatis bikinin profil MUA
+            if ($request->has('mua_name')) {
+                \App\Models\Mua::create([
+                    'user_id' => $user->id,
+                    'name'    => $request->mua_name,
+                    'rating'  => 0,
+                ]);
+            }
+            return $user;
+        });
+
+        // 2. Respon Berdasarkan Sumber
+        if ($request->expectsJson()) {
+            $token = $user->createToken('beautyhub_mobile_token')->plainTextToken;
             return response()->json([
-                'success' => false,
-                'message' => 'Gagal membuat token.',
-            ], 500);
+                'success' => true,
+                'message' => 'Registrasi berhasil.',
+                'data'    => ['user' => $this->formatUser($user), 'access_token' => $token]
+            ], 201);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Registrasi berhasil.',
-            'data'    => [
-                'user'         => $this->formatUser($user),
-                'access_token' => $token,
-                'token_type'   => 'bearer',
-                'expires_in'   => config('jwt.ttl') * 60,
-            ],
-        ], 201);
+        \Auth::login($user);
+        return redirect()->route('mua.dashboard')->with('success', 'Akun berhasil dibuat!');
     }
+
 
     /**
      * POST /api/login
@@ -84,31 +84,24 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $credentials = $request->only('email', 'password');
-
-        try {
-            if (!$token = JWTAuth::attempt($credentials)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Email atau password salah.',
-                ], 401);
-            }
-        } catch (JWTException $e) {
+        if (!Auth::attempt($request->only('email', 'password'))) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal membuat token.',
-            ], 500);
+                'message' => 'Email atau password salah.',
+            ], 401);
         }
 
-        $user = JWTAuth::user();
+        $user = Auth::user();
 
         if (!$user->is_active) {
-            JWTAuth::invalidate($token);
             return response()->json([
                 'success' => false,
                 'message' => 'Akun Anda telah dinonaktifkan.',
             ], 403);
         }
+
+        // Membuat Sanctum Token untuk di-save Nike di Shared Preferences Flutter
+        $token = $user->createToken('beautyhub_mobile_token')->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -117,7 +110,6 @@ class AuthController extends Controller
                 'user'         => $this->formatUser($user),
                 'access_token' => $token,
                 'token_type'   => 'bearer',
-                'expires_in'   => config('jwt.ttl') * 60,
             ],
         ]);
     }
@@ -125,13 +117,10 @@ class AuthController extends Controller
     /**
      * POST /api/logout
      */
-    public function logout()
+    public function logout(Request $request)
     {
-        try {
-            JWTAuth::invalidate(JWTAuth::getToken());
-        } catch (JWTException $e) {
-            // Token sudah kadaluarsa/invalid — tetap anggap logout
-        }
+        // Hapus token sanctum aktif saat ini
+        $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'success' => true,
@@ -142,14 +131,12 @@ class AuthController extends Controller
     /**
      * GET /api/me
      */
-    public function me()
+    public function me(Request $request)
     {
-        $user = JWTAuth::user();
-
+        $user = $request->user();
         $data = $this->formatUser($user);
 
-        // Jika MUA, sertakan profil MUA
-        if ($user->isMua() && $user->mua) {
+        if ($user->role === 'mua' && $user->mua) {
             $data['mua_profile'] = $user->mua->load('services');
         }
 
@@ -159,7 +146,6 @@ class AuthController extends Controller
         ]);
     }
 
-    // ─── Private Helper ──────────────────────────────────────────────
     private function formatUser(User $user): array
     {
         return [

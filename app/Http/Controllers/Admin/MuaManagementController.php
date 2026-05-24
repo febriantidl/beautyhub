@@ -51,30 +51,37 @@ class MuaManagementController extends Controller
 
     // Buat akun MUA baru dari admin
     public function store(Request $request)
-    {
-        $request->validate([
-            'name'     => 'required|string|max:100',
-            'email'    => 'required|email|unique:users,email',
-            'phone'    => 'nullable|string|max:20',
-            'location' => 'nullable|string|max:100',
-            'password' => 'required|string|min:8',
-        ]);
+{
+    $request->validate([
+        'name'         => 'required|string|max:100',
+        'email'        => 'required|email|unique:users,email',
+        'phone'        => 'nullable|string|max:20',
+        'location'     => 'nullable|string|max:100',
+        'password'     => 'required|string|min:8',
+        'spesialisasi' => 'required|string', // Tambahan biar sinkron
+        'harga'        => 'required|numeric', // Tambahan buat patokan harga awal
+    ]);
 
-        $user = User::create([
-            'name'      => $request->name,
-            'email'     => $request->email,
-            'phone'     => $request->phone,
-            'password'  => Hash::make($request->password),
-            'role'      => 'mua',
-            'is_active' => true,
-        ]);
+    $user = User::create([
+        'name'         => $request->name,
+        'email'        => $request->email,
+        'phone_number' => $request->phone, // Sesuaikan dengan kolom database asli (phone_number)
+        'password'     => Hash::make($request->password),
+        'role'         => 'mua',
+        'is_active'    => true,
+    ]);
 
-        Mua::create([
-            'user_id'  => $user->id,
-            'location' => $request->location,
-        ]);
+    Mua::create([
+        'user_id'      => $user->id,
+        'nama_mua'     => $request->name,
+        'spesialisasi' => $request->spesialisasi,
+        'harga'        => $request->harga,
+        'lokasi'       => $request->location,
+        'is_verified'  => true, // Otomatis aktif karena dibuat langsung oleh Admin
+        'rating'       => 5.0,  // Rating awal default
+    ]);
 
-        return redirect()->route('admin.muas.index')
-            ->with('success', "Akun MUA {$user->name} berhasil dibuat.");
-    }
+    return redirect()->route('admin.muas.index')
+        ->with('success', "Akun MUA {$user->name} berhasil dibuat beserta profilnya.");
+}
 }
