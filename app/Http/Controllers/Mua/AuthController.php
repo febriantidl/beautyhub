@@ -4,62 +4,51 @@ namespace App\Http\Controllers\Mua;
 
 use App\Http\Controllers\Controller;
 use App\Models\Mua;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    public function showLoginForm()
-    {
-        return view('mua.login');
+    public function showLoginForm() { 
+        return Auth::check() ? redirect()->route('mua.dashboard') : view('mua.login'); 
     }
 
-    public function login(Request $request)
-    {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string',
+    public function showRegisterForm() { 
+        return view('auth.register'); 
+    }
+
+    public function register(Request $request) {
+        $request->validate([
+            'name' => 'required', 'email' => 'required|email|unique:users',
+            'password' => 'required|min:3', 'mua_name' => 'required'
         ]);
 
-        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
-            return back()->withInput($request->only('email'))
-                ->withErrors(['email' => 'Email atau password salah.']);
-        }
+        $user = User::create([
+            'name' => $request->name, 'email' => $request->email,
+            'password' => Hash::make($request->password), 'role' => 'mua'
+        ]);
 
-        $user = Auth::user();
+        Mua::create(['user_id' => $user->id, 'name' => $request->mua_name, 'rating' => 0]);
 
-        if (!in_array($user->role, ['mua', 'admin'])) {
-            Auth::logout();
-            return back()->withInput($request->only('email'))
-                ->withErrors(['email' => 'Akun ini tidak memiliki akses MUA Dashboard.']);
-        }
-
-        if (!$user->is_active) {
-            Auth::logout();
-            return back()->withInput($request->only('email'))
-                ->withErrors(['email' => 'Akun Anda telah dinonaktifkan.']);
-        }
-
-        // Pastikan MUA punya profil
-        if ($user->isMua() && !$user->mua) {
-            Mua::create(['user_id' => $user->id]);
-        }
-
-        $request->session()->regenerate();
-
-        // Redirect berdasarkan role
-        if ($user->isAdmin()) {
-            return redirect()->route('admin.dashboard');
-        }
-
-        return redirect()->route('mua.dashboard');
+        return redirect()->route('mua.login')->with('success', 'Berhasil daftar!');
     }
 
-    public function logout(Request $request)
-    {
+    public function login(Request $request) {
+        $creds = $request->validate(['email' => 'required|email', 'password' => 'required']);
+        
+        // INGAT: Pakai false biar nggak error remember_token di database
+        if (Auth::attempt($creds, false)) {
+            $request->session()->regenerate();
+            return redirect()->intended('/mua/dashboard');
+        }
+        return back()->withErrors(['email' => 'Login gagal!']);
+    }
+
+    public function logout(Request $request) {
         Auth::logout();
         $request->session()->invalidate();
-        $request->session()->regenerateToken();
         return redirect()->route('mua.login');
     }
 }
