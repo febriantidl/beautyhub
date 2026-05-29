@@ -53,3 +53,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/chatbot/message',   [ChatbotApiController::class, 'message']);
     Route::post('/search/by-image',   [SearchApiController::class, 'searchByImage']);
 });
+
