@@ -42,21 +42,27 @@ Route::prefix('services')->name('services.')->group(function () {
     Route::delete('/{id}', [ServiceController::class, 'destroy'])->name('destroy');
 });
 
-        // Bookings
         Route::prefix('bookings')->name('bookings.')->group(function () {
-            Route::get('/', [BookingController::class, 'index'])->name('index'); // Dipanggil di sidebar
-            Route::get('/{id}', [BookingController::class, 'show'])->name('show');
-            Route::post('/{id}/approve', [BookingController::class, 'approve'])->name('approve');
-            Route::post('/{id}/reject', [BookingController::class, 'reject'])->name('reject');
-            Route::post('/{id}/complete', [BookingController::class, 'complete'])->name('complete');
-            Route::post('/verify-qr', [BookingController::class, 'verifyQr'])->name('verify-qr');
-        });
+    Route::get('/', [BookingController::class, 'index'])->name('index');
+    Route::get('/{id}', [BookingController::class, 'show'])->name('show');
+    Route::post('/{id}/approve', [BookingController::class, 'approve'])->name('approve');
+    Route::post('/{id}/reject', [BookingController::class, 'reject'])->name('reject');
+    Route::post('/{id}/complete', [BookingController::class, 'complete'])->name('complete');
 
-        // Portfolio
+    Route::post(
+        '/verify-qr',
+        [BookingController::class, 'verifyQr']
+    )->name('verify-qr');
+
+}); // <- INI YANG HILANG
+
+// Portfolio
         Route::prefix('portfolio')->name('portfolio.')->group(function () {
             Route::get('/', [PortfolioController::class, 'index'])->name('index');
             Route::post('/', [PortfolioController::class, 'store'])->name('store');
             Route::delete('/{id}', [PortfolioController::class, 'destroy'])->name('destroy');
         });
-    });
-});
+
+    }); // role:mua
+
+}); // auth

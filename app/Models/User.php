@@ -35,8 +35,20 @@ class User extends Authenticatable implements JWTSubject
     public function bookings() { return $this->hasMany(Booking::class); }
     public function reviews()  { return $this->hasMany(Review::class); }
 
-    // ── Role helpers ──────────────────────────────────────────────
-    public function isAdmin():    bool { return $this->role === 'admin'; }
-    public function isMua():      bool { return $this->role === 'mua'; }
-    public function isCustomer(): bool { return $this->role === 'customer'; }
+    // ── Role helpers ──
+public function isAdmin(): bool
+{
+    return $this->role === 'admin';
 }
+
+public function isMua(): bool
+{
+    return $this->role === 'mua';
+}
+
+public function isCustomer(): bool
+{
+    return $this->role === 'customer';
+}
+}
+

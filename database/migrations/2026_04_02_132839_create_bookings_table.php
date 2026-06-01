@@ -24,7 +24,14 @@ return new class extends Migration
             $table->decimal('price', 12, 0)->default(0);
             $table->text('notes')->nullable();
             $table->string('reference_image')->nullable();
-            $table->enum('status', ['pending', 'approved', 'rejected', 'verified', 'completed', 'cancelled'])->default('pending');
+            $table->enum('status', [
+    'pending',
+    'approved',
+    'rejected',
+    'verified',
+    'completed',
+    'cancelled'
+])->default('pending');
             $table->string('verification_code', 10)->nullable();
             $table->string('qr_code_path')->nullable();
             $table->string('rejection_reason')->nullable();

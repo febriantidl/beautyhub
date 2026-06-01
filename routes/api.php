@@ -54,3 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/search/by-image',   [SearchApiController::class, 'searchByImage']);
 });
 
+Route::get(
+'/booking/{id}',
+[BookingApiController::class,'show']
+);
