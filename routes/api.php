@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\MobileIntegrationController;
 use App\Http\Controllers\Mua\BookingController as MuaBookingController;
 use App\Http\Controllers\Mua\ServiceController;
 
+
 /*
 |--------------------------------------------------------------------------
 | BeautyHub API Routes
@@ -25,6 +26,10 @@ Route::post('/login',    [AuthController::class, 'login']);
 Route::get('/mobile/mua', [MobileIntegrationController::class, 'getMua']);
 Route::post('/mobile/booking', [MuaBookingController::class, 'storeFromMobile']);
 Route::get('/mua/{mua_id}/services', [ServiceController::class, 'apiIndex']);
+Route::get(
+    '/mua/{muaId}/availability',
+    [MuaApiController::class, 'availability']
+);
 
 // ── Protected routes (Gunakan sanctum untuk Sanctum Token) ──────────
 Route::middleware('auth:sanctum')->group(function () {

@@ -37,6 +37,21 @@ class BookingApiController extends Controller
         }
 
         try {
+            $slotExists = Booking::where('mua_id', $request->mua_id)
+    ->where('event_date', $request->event_date)
+    ->where('time_slot', $request->time_slot)
+    ->whereNotIn('status', [
+        'rejected',
+        'cancelled'
+    ])
+    ->exists();
+
+if ($slotExists) {
+    return response()->json([
+        'status' => 'error',
+        'message' => 'Slot sudah dibooking oleh pelanggan lain'
+    ], 422);
+}
             // 2. Insert data pesanan baru ke tabel `bookings`
             $booking = Booking::create([
                 'user_id'          => $request->user()->id, // Otomatis deteksi ID Customer dari Bearer Token Login
@@ -80,5 +95,46 @@ class BookingApiController extends Controller
                 'error'   => $e->getMessage()
             ], 500);
         }
+        
     }
+    public function show($id)
+{
+    $booking = Booking::with([
+        'mua.user',
+        'service'
+    ])->findOrFail($id);
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'id' => $booking->id,
+
+            'status' => $booking->status,
+
+            'booking_date' => $booking->booking_date,
+
+            'event_date' => $booking->event_date,
+
+            'time_slot' => $booking->time_slot,
+
+            'price' => $booking->price,
+
+            'verification_code' => $booking->verification_code,
+
+            'qr_code_url' => $booking->qr_code_path
+                ? asset('storage/' . $booking->qr_code_path)
+                : null,
+
+            'mua' => [
+                'id' => $booking->mua?->id,
+                'name' => $booking->mua?->user?->name,
+            ],
+
+            'service' => [
+                'id' => $booking->service?->id,
+                'name' => $booking->service?->name,
+            ],
+        ]
+    ]);
+}
 }

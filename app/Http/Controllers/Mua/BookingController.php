@@ -7,6 +7,9 @@ use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class BookingController extends Controller
 {
@@ -59,12 +62,38 @@ class BookingController extends Controller
 
     public function approve($id)
 {
-    Booking::where('id', $id)
-        ->update([
-            'status' => 'approved'
-        ]);
+    $booking = Booking::findOrFail($id);
 
-    return back()->with('success', 'Booking disetujui');
+    $verificationCode = strtoupper(
+        Str::random(8)
+    );
+
+    $qrContent = json_encode([
+        'booking_id' => $booking->id,
+        'code' => $verificationCode,
+    ]);
+
+    $fileName = 'booking_'.$booking->id.'.svg';
+
+$filePath = 'qrcodes/'.$fileName;
+
+Storage::disk('public')->put(
+    $filePath,
+    QrCode::format('svg')
+        ->size(300)
+        ->generate($qrContent)
+);
+
+    $booking->update([
+        'status' => 'approved',
+        'verification_code' => $verificationCode,
+        'qr_code_path' => $filePath,
+    ]);
+
+    return back()->with(
+        'success',
+        'Booking disetujui dan QR berhasil dibuat'
+    );
 }
 
     public function reject($id)
@@ -139,6 +168,7 @@ public function checkAvailability(Request $request)
         'mua_id'         => 'required|exists:muas,id',
         'customer_email' => 'required|email',
         'event_date'     => 'required|date',
+        'time_slot' => 'required|string',
         'service_id'     => 'required|exists:services,id',
         'location'       => 'required|string',
     ]);
@@ -151,6 +181,23 @@ public function checkAvailability(Request $request)
             'message' => 'User tidak ditemukan'
         ], 404);
     }
+
+    $slotExists = Booking::where('mua_id', $request->mua_id)
+    ->where('event_date', $request->event_date)
+    ->where('time_slot', $request->time_slot)
+    ->whereIn('status', [
+        'pending',
+        'approved',
+        'verified'
+    ])
+    ->exists();
+
+if ($slotExists) {
+    return response()->json([
+        'success' => false,
+        'message' => 'Slot sudah terisi'
+    ], 422);
+}
 
     $booking = Booking::create([
 
@@ -165,6 +212,7 @@ public function checkAvailability(Request $request)
     'booking_date' => now()->toDateString(),
 
     'event_date' => $request->event_date,
+    'time_slot' => $request->time_slot,
 
     'location_address' => $request->location,
 

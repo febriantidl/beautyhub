@@ -103,6 +103,44 @@ class MuaApiController extends Controller
         ]);
     }
 
+
+    public function availability(Request $request, $muaId)
+{
+    $request->validate([
+        'date' => 'required|date'
+    ]);
+
+    $allSlots = [
+        '08:00',
+        '10:00',
+        '13:00',
+        '15:00',
+        '18:00'
+    ];
+
+    $bookedSlots = \App\Models\Booking::where('mua_id', $muaId)
+    ->where('event_date', $request->date)
+    ->whereNotIn('status', [
+        'rejected',
+        'cancelled'
+    ])
+    ->pluck('time_slot')
+    ->toArray();
+
+    $availableSlots = array_values(
+        array_diff($allSlots, $bookedSlots)
+    );
+
+    return response()->json([
+        'success' => true,
+        'date' => $request->date,
+        'available_slots' => $availableSlots,
+        'booked_slots' => $bookedSlots
+    ]);
+}
+
+
+
     /**
      * GET /api/muas/{id}/reviews
      */
