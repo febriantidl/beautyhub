@@ -15,15 +15,18 @@ return Application::configure(basePath: dirname(__DIR__))
 
     ->withMiddleware(function (Middleware $middleware): void {
 
-        $middleware->alias([
-            'role' => \App\Http\Middleware\CheckRole::class,
-        ]);
+    $middleware->alias([
+        'role' => \App\Http\Middleware\CheckRole::class,
+    ]);
 
-        // FIX AUTH REDIRECT
-        $middleware->redirectGuestsTo(function (Request $request) {
-            return route('mua.login');
-        });
-    })
+    $middleware->redirectGuestsTo(function (Request $request) {
+        return route('mua.login');
+    });
+
+    $middleware->append(
+        \Illuminate\Http\Middleware\HandleCors::class
+    );
+})
 
     ->withExceptions(function (Exceptions $exceptions): void {
         //
