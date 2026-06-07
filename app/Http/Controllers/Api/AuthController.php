@@ -16,11 +16,6 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        return response()->json([
-        'success' => true,
-        'message' => 'REGISTER MASUK'
-    ]);
-        \Log::info('REGISTER HIT', $request->all());
 
         // 1. Validasi Fleksibel
         $validator = Validator::make($request->all(), [
@@ -60,6 +55,21 @@ class AuthController extends Controller
 
         // 2. Respon Berdasarkan Sumber
         if ($request->expectsJson()) {
+            $token = $user->createToken('beautyhub_mobile_token')->plainTextToken;
+            return response()->json([
+                'success' => true,
+                'message' => 'Registrasi berhasil.',
+                'data'    => [
+                    'user'         => [
+                        'id'    => $user->id,
+                        'name'  => $user->name,
+                        'email' => $user->email,
+                        'role'  => $user->role,
+                    ],
+                    'access_token' => $token,
+                    'token_type'   => 'bearer',
+                ]
+            ], 201);
 }
 
         \Auth::login($user);
