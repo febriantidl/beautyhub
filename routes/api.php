@@ -16,7 +16,7 @@ use App\Http\Controllers\Mua\ServiceController;
 |--------------------------------------------------------------------------
 | BeautyHub API Routes
 |--------------------------------------------------------------------------
-*/  
+*/   
 
 // ── Public routes ──────────────────────────────────────────────────
 Route::post('/register', [AuthController::class, 'register']);
