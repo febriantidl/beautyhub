@@ -49,10 +49,6 @@ Route::prefix('services')->name('services.')->group(function () {
     Route::post('/{id}/reject', [BookingController::class, 'reject'])->name('reject');
     Route::post('/{id}/complete', [BookingController::class, 'complete'])->name('complete');
 
-    Route::post(
-        '/verify-qr',
-        [BookingController::class, 'verifyQr']
-    )->name('verify-qr');
 
 }); // <- INI YANG HILANG
 

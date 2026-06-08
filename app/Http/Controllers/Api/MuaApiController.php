@@ -200,6 +200,14 @@ class MuaApiController extends Controller
                     'category'    => $s->category,
                 ]),
         ];
+        
+
+        $data['sample_portfolios'] = $mua->portfolios
+            ->take(1)
+            ->map(fn($p) => [
+                'image_url'      => asset('storage/' . $p->image_path),
+                'style_category' => $p->style_category,
+            ])->values();
 
         if ($detail) {
             $data['portfolios'] = $mua->portfolios

@@ -47,7 +47,8 @@ class VerificationController extends Controller
         }
 
         $booking->update([
-            'status'      => 'verified',
+            'status'      => Booking::STATUS_VERIFIED,
+            'verified'    => true,
             'verified_at' => now(),
         ]);
 

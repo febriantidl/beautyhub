@@ -9,13 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Booking extends Model
 {
     protected $fillable = [
+        'booking_code',
+
         'user_id',
         'mua_id',
         'service_id',
 
         'booking_date',
         'event_date',
-
         'time_slot',
 
         'location_address',
@@ -23,7 +24,6 @@ class Booking extends Model
 
         'price',
         'notes',
-
         'reference_image',
 
         'status',
@@ -39,37 +39,37 @@ class Booking extends Model
 
     protected $casts = [
         'booking_date' => 'date',
-        'event_date' => 'date',
+        'event_date'  => 'date',
         'verified_at' => 'datetime',
-        'verified' => 'boolean',
-        'price' => 'integer',
+        'verified'    => 'boolean',
+        'price'       => 'integer',
     ];
 
     const STATUS_PENDING   = 'pending';
-const STATUS_APPROVED  = 'approved';
-const STATUS_REJECTED  = 'rejected';
-const STATUS_VERIFIED  = 'verified';
-const STATUS_COMPLETED = 'completed';
-const STATUS_CANCELLED = 'cancelled';
+    const STATUS_APPROVED  = 'approved';
+    const STATUS_REJECTED  = 'rejected';
+    const STATUS_VERIFIED  = 'verified';
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_CANCELLED = 'cancelled';
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(User::class,'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function mua(): BelongsTo
     {
-        return $this->belongsTo(Mua::class);
+        return $this->belongsTo(Mua::class, 'mua_id');
     }
 
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class, 'service_id');
     }
 
     public function review(): HasOne
@@ -78,27 +78,32 @@ const STATUS_CANCELLED = 'cancelled';
     }
 
     public function isPending(): bool
-{
-    return $this->status === self::STATUS_PENDING;
-}
+    {
+        return $this->status === self::STATUS_PENDING;
+    }
 
-public function isApproved(): bool
-{
-    return $this->status === self::STATUS_APPROVED;
-}
+    public function isApproved(): bool
+    {
+        return $this->status === self::STATUS_APPROVED;
+    }
 
-public function isVerified(): bool
-{
-    return $this->status === self::STATUS_VERIFIED;
-}
+    public function isRejected(): bool
+    {
+        return $this->status === self::STATUS_REJECTED;
+    }
 
-public function isCompleted(): bool
-{
-    return $this->status === self::STATUS_COMPLETED;
-}
+    public function isVerified(): bool
+    {
+        return $this->status === self::STATUS_VERIFIED || $this->verified === true;
+    }
 
-public function isCancelled(): bool
-{
-    return $this->status === self::STATUS_CANCELLED;
-}
+    public function isCompleted(): bool
+    {
+        return $this->status === self::STATUS_COMPLETED;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === self::STATUS_CANCELLED;
+    }
 }
