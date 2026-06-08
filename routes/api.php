@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\SearchApiController;
 use App\Http\Controllers\Api\MobileIntegrationController;
 use App\Http\Controllers\Mua\BookingController as MuaBookingController;
 use App\Http\Controllers\Mua\ServiceController;
+use App\Http\Controllers\Api\NotificationApiController;
 
 
 /*
@@ -33,6 +34,10 @@ Route::get(
 
 // ── Protected routes (Gunakan sanctum untuk Sanctum Token) ──────────
 Route::middleware('auth:sanctum')->group(function () {
+
+    // Notifications
+    Route::get('/notifications',          [NotificationApiController::class, 'index']);
+    Route::post('/notifications/read-all', [NotificationApiController::class, 'readAll']);
 
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);

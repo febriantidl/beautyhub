@@ -4,57 +4,50 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Notifications\BookingStatusNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class BookingApiController extends Controller
 {
-    /**
-     * Menyimpan data booking baru yang dikirim dari aplikasi mobile (Flutter Nike)
-     */
     public function store(Request $request)
     {
-        // 1. Proses Validasi input dari Flutter sesuai dengan kolom wajib database asli beautyhub_db
         $validator = Validator::make($request->all(), [
             'mua_id'           => 'required|exists:muas,id',
             'service_id'       => 'required|exists:services,id',
-            'booking_date'     => 'required|date_format:Y-m-d', // Tanggal order dibuat
-            'event_date'       => 'required|date_format:Y-m-d', // Tanggal acara make-up
-            'time_slot'        => 'required|string|max:50',     // Jam acara (contoh: "10:00")
-            'location_address' => 'required|string',            // Alamat lengkap lokasi acara
-            'location_notes'   => 'nullable|string',            // Catatan tambahan lokasi (opsional)
-            'price'            => 'required|numeric',           // Total harga layanan
-            'notes'            => 'nullable|string',            // Catatan tambahan dari customer (opsional)
+            'booking_date'     => 'required|date_format:Y-m-d',
+            'event_date'       => 'required|date_format:Y-m-d',
+            'time_slot'        => 'required|string|max:50',
+            'location_address' => 'required|string',
+            'location_notes'   => 'nullable|string',
+            'price'            => 'required|numeric',
+            'notes'            => 'nullable|string',
         ]);
 
-        // Jika data yang dikirim Nike tidak sesuai/kurang kolom, kirim respon error ke Flutter
         if ($validator->fails()) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Validasi gagal, data tidak sesuai skema database!',
+                'message' => 'Validasi gagal!',
                 'errors'  => $validator->errors()
             ], 422);
         }
 
         try {
             $slotExists = Booking::where('mua_id', $request->mua_id)
-    ->where('event_date', $request->event_date)
-    ->where('time_slot', $request->time_slot)
-    ->whereNotIn('status', [
-        'rejected',
-        'cancelled'
-    ])
-    ->exists();
+                ->where('event_date', $request->event_date)
+                ->where('time_slot', $request->time_slot)
+                ->whereNotIn('status', ['rejected', 'cancelled'])
+                ->exists();
 
-if ($slotExists) {
-    return response()->json([
-        'status' => 'error',
-        'message' => 'Slot sudah dibooking oleh pelanggan lain'
-    ], 422);
-}
-            // 2. Insert data pesanan baru ke tabel `bookings`
+            if ($slotExists) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Slot sudah dibooking oleh pelanggan lain'
+                ], 422);
+            }
+
             $booking = Booking::create([
-                'user_id'          => $request->user()->id, // Otomatis deteksi ID Customer dari Bearer Token Login
+                'user_id'          => $request->user()->id,
                 'mua_id'           => $request->mua_id,
                 'service_id'       => $request->service_id,
                 'booking_date'     => $request->booking_date,
@@ -64,14 +57,13 @@ if ($slotExists) {
                 'location_notes'   => $request->location_notes,
                 'price'            => $request->price,
                 'notes'            => $request->notes,
-                'status'           => 'pending', // Default status awal dari mobile, agar muncul di MUA web panel lu
-                'verified'         => false,     // Status verifikasi awal
+                'status'           => 'pending',
+                'verified'         => false,
             ]);
 
-            // 3. Return response sukses berformat JSON yang rapi untuk di-map Nike di Flutter
             return response()->json([
                 'status'  => 'success',
-                'message' => 'Booking berhasil dibuat! Pesanan Anda telah diteruskan ke pihak MUA di website.',
+                'message' => 'Booking berhasil dibuat!',
                 'data'    => [
                     'id'               => $booking->id,
                     'user_id'          => $booking->user_id,
@@ -88,53 +80,107 @@ if ($slotExists) {
             ], 201);
 
         } catch (\Exception $e) {
-            // Jika ada kegagalan sistem internal database
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Terjadi kesalahan pada server Laravel!',
+                'message' => 'Terjadi kesalahan pada server!',
                 'error'   => $e->getMessage()
             ], 500);
         }
-        
     }
+
+    public function myBookings(Request $request)
+    {
+        $bookings = Booking::with(['mua.user', 'service'])
+            ->where('user_id', $request->user()->id)
+            ->latest()
+            ->get()
+            ->map(function ($booking) {
+                return [
+                    'id'                => $booking->id,
+                    'status'            => $booking->status,
+                    'booking_date'      => $booking->booking_date,
+                    'event_date'        => $booking->event_date,
+                    'time_slot'         => $booking->time_slot,
+                    'location_address'  => $booking->location_address,
+                    'price'             => (int) $booking->price,
+                    'booking_code'      => $booking->booking_code,
+                    'rejection_reason'  => $booking->rejection_reason,
+                    'verification_code' => $booking->verification_code,
+                    'mua'               => [
+                        'id'   => $booking->mua?->id,
+                        'name' => $booking->mua?->name ?? $booking->mua?->user?->name,
+                    ],
+                    'service'           => [
+                        'id'   => $booking->service?->id,
+                        'name' => $booking->service?->name,
+                    ],
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $bookings,
+        ]);
+    }
+
+    public function cancel(Request $request, $id)
+    {
+        $booking = Booking::where('user_id', $request->user()->id)
+            ->findOrFail($id);
+
+        $booking->update(['status' => 'cancelled']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Booking dibatalkan.',
+        ]);
+    }
+
     public function show($id)
-{
-    $booking = Booking::with([
-        'mua.user',
-        'service'
-    ])->findOrFail($id);
+    {
+        $booking = Booking::with(['mua.user', 'service'])->findOrFail($id);
 
-    return response()->json([
-        'success' => true,
-        'data' => [
-            'id' => $booking->id,
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'id'                => $booking->id,
+                'status'            => $booking->status,
+                'booking_date'      => $booking->booking_date,
+                'event_date'        => $booking->event_date,
+                'time_slot'         => $booking->time_slot,
+                'price'             => $booking->price,
+                'booking_code'      => $booking->booking_code,
+                'verification_code' => $booking->verification_code,
+                'rejection_reason'  => $booking->rejection_reason,
+                'mua'               => [
+                    'id'   => $booking->mua?->id,
+                    'name' => $booking->mua?->name ?? $booking->mua?->user?->name,
+                ],
+                'service'           => [
+                    'id'   => $booking->service?->id,
+                    'name' => $booking->service?->name,
+                ],
+            ]
+        ]);
+    }
 
-            'status' => $booking->status,
+    public function updateStatus(Request $request, $id)
+    {
+        $booking = Booking::with(['user', 'mua'])->findOrFail($id);
+        $status  = $request->status;
 
-            'booking_date' => $booking->booking_date,
+        $booking->update([
+            'status'           => $status,
+            'rejection_reason' => $request->rejection_reason ?? null,
+        ]);
 
-            'event_date' => $booking->event_date,
+        if ($booking->user) {
+            $booking->user->notify(new BookingStatusNotification($booking, $status));
+        }
 
-            'time_slot' => $booking->time_slot,
-
-            'price' => $booking->price,
-
-            'verification_code' => $booking->verification_code,
-
-            'qr_code_url' => $booking->qr_code_path
-                ? asset('storage/' . $booking->qr_code_path)
-                : null,
-
-            'mua' => [
-                'id' => $booking->mua?->id,
-                'name' => $booking->mua?->user?->name,
-            ],
-
-            'service' => [
-                'id' => $booking->service?->id,
-                'name' => $booking->service?->name,
-            ],
-        ]
-    ]);
-}
+        return response()->json([
+            'success' => true,
+            'message' => 'Status booking diupdate.',
+        ]);
+    }
 }
