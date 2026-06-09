@@ -13,7 +13,7 @@ class MuaApiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Mua::with('user', 'services')
+        $query = Mua::with('user', 'services', 'portfolios')
             ->whereHas('user', fn($q) => $q->where('is_active', true));
 
         if ($request->filled('location')) {
@@ -21,7 +21,9 @@ class MuaApiController extends Controller
         }
 
         if ($request->filled('style')) {
-            $query->whereJsonContains('style_tags', $request->style);
+            $query->whereHas('services', fn($q) =>
+                $q->where('category', $request->style)->where('is_active', true)
+            );
         }
 
         if ($request->filled('min_rating')) {
@@ -103,43 +105,27 @@ class MuaApiController extends Controller
         ]);
     }
 
-
     public function availability(Request $request, $muaId)
-{
-    $request->validate([
-        'date' => 'required|date'
-    ]);
+    {
+        $request->validate(['date' => 'required|date']);
 
-    $allSlots = [
-        '08:00',
-        '10:00',
-        '13:00',
-        '15:00',
-        '18:00'
-    ];
+        $allSlots = ['08:00', '10:00', '13:00', '15:00', '18:00'];
 
-    $bookedSlots = \App\Models\Booking::where('mua_id', $muaId)
-    ->where('event_date', $request->date)
-    ->whereNotIn('status', [
-        'rejected',
-        'cancelled'
-    ])
-    ->pluck('time_slot')
-    ->toArray();
+        $bookedSlots = \App\Models\Booking::where('mua_id', $muaId)
+            ->where('event_date', $request->date)
+            ->whereNotIn('status', ['rejected', 'cancelled'])
+            ->pluck('time_slot')
+            ->toArray();
 
-    $availableSlots = array_values(
-        array_diff($allSlots, $bookedSlots)
-    );
+        $availableSlots = array_values(array_diff($allSlots, $bookedSlots));
 
-    return response()->json([
-        'success' => true,
-        'date' => $request->date,
-        'available_slots' => $availableSlots,
-        'booked_slots' => $bookedSlots
-    ]);
-}
-
-
+        return response()->json([
+            'success'         => true,
+            'date'            => $request->date,
+            'available_slots' => $availableSlots,
+            'booked_slots'    => $bookedSlots,
+        ]);
+    }
 
     /**
      * GET /api/muas/{id}/reviews
@@ -155,14 +141,16 @@ class MuaApiController extends Controller
         return response()->json([
             'success' => true,
             'data'    => $reviews->map(fn($r) => [
-                'id'           => $r->id,
-                'rating'       => $r->rating,
-                'comment'      => $r->comment,
-                'reviewer'     => [
+                'id'         => $r->id,
+                'rating'     => $r->rating,
+                'comment'    => $r->comment,
+                'reviewer'   => [
                     'name'   => $r->user->name,
-                    'avatar' => $r->user->avatar ? asset('storage/' . $r->user->avatar) : null,
+                    'avatar' => $r->user->avatar
+                        ? asset('storage/' . $r->user->avatar)
+                        : null,
                 ],
-                'created_at'   => $r->created_at->toDateString(),
+                'created_at' => $r->created_at->toDateString(),
             ]),
             'summary' => [
                 'average_rating' => $mua->rating,
@@ -181,7 +169,9 @@ class MuaApiController extends Controller
         $data = [
             'id'               => $mua->id,
             'name'             => $mua->user->name,
-            'avatar'           => $mua->user->avatar ? asset('storage/' . $mua->user->avatar) : null,
+            'avatar'           => $mua->user->avatar
+                ? asset('storage/' . $mua->user->avatar)
+                : null,
             'location'         => $mua->location,
             'bio'              => $mua->bio,
             'experience_years' => $mua->experience_years,
@@ -198,11 +188,12 @@ class MuaApiController extends Controller
                     'description' => $s->description,
                     'price'       => $s->price,
                     'category'    => $s->category,
-                ]),
+                ])->values(),
         ];
-        
 
+        // Foto portofolio untuk beranda — ambil 1 foto valid
         $data['sample_portfolios'] = $mua->portfolios
+            ->filter(fn($p) => !empty($p->image_path))
             ->take(1)
             ->map(fn($p) => [
                 'image_url'      => asset('storage/' . $p->image_path),
@@ -211,13 +202,14 @@ class MuaApiController extends Controller
 
         if ($detail) {
             $data['portfolios'] = $mua->portfolios
+                ->filter(fn($p) => !empty($p->image_path))
                 ->take(12)
                 ->map(fn($p) => [
                     'id'             => $p->id,
                     'title'          => $p->title,
                     'image_url'      => asset('storage/' . $p->image_path),
                     'style_category' => $p->style_category,
-                ]);
+                ])->values();
             $data['phone'] = $mua->user->phone;
         }
 
